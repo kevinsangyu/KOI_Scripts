@@ -9,7 +9,7 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
 
 # Set DNS address to static address OR NOT
 $enableStaticDNS = $false  # set this to $true if you want to enable static DNS
-$staticDNSIPv4 = "8.8.8.8", "10.3.10.25"  
+$staticDNSIPv4 = "10.5.10.20", "10.5.10.25"  
 # **CHANGE ABOVE ADDRESSES IF USING STATIC ADDRESSES**
 
 # Current network configuration information
