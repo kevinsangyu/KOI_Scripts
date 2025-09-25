@@ -6,17 +6,17 @@ Import-Module ActiveDirectory
 
 # OU Hierarchy and mappings
 $DriveMappings = @(
-    @{ OUPath = "Academic"; Drive = "U:"; Path = "\\10.1.10.8\Academic"},
-    @{ OUPath = "Accreditation"; Drive = "Z:"; Path = "\\10.1.10.8\Accreditation"},
-    @{ OUPath = "Admissions"; Drive = "N:"; Path = "\\10.1.10.8\Admissions"},
-    @{ OUPath = "Finance"; Drive = "I:"; Path = "\\10.1.10.8\Finance"},
+    @{ OUPath = "Academic"; Drive = "U:"; Path = "\\10.5.10.8\Academic"},
+    @{ OUPath = "Accreditation"; Drive = "Z:"; Path = "\\10.5.10.8\Accreditation"},
+    @{ OUPath = "Admissions"; Drive = "N:"; Path = "\\10.5.10.8\Admissions"},
+    @{ OUPath = "Finance"; Drive = "I:"; Path = "\\10.5.10.8\Finance"},
     @{ OUPath = "ICT"; Drive = "X:"; Path = "\\10.5.10.8\ICT"},
-    @{ OUPath = "HOP_LearningSkillsCentre"; Drive = "Y:"; Path = "\\10.1.10.8\Learning Skills Centre"},
-    @{ OUPath = "Library"; Drive = "L:"; Path = "\\10.1.10.8\Library"},
-    @{ OUPath = "Management"; Drive = "M:"; Path = "\\10.1.10.8\Management"},
-    @{ OUPath = "Marketing"; Drive = "K:"; Path = "\\10.1.10.8\Marketing"},
-    @{ OUPath = "StudentServices"; Drive = "V:"; Path = "\\10.1.10.8\Student Services"},
-    @{ OUPath = "HOP_TeachingLearning"; Drive = "T:"; Path = "\\10.1.10.8\Teaching_Learning"}
+    @{ OUPath = "HOP_LearningSkillsCentre"; Drive = "Y:"; Path = "\\10.5.10.8\Learning Skills Centre"},
+    @{ OUPath = "Library"; Drive = "L:"; Path = "\\10.5.10.8\Library"},
+    @{ OUPath = "Management"; Drive = "M:"; Path = "\\10.5.10.8\Management"},
+    @{ OUPath = "Marketing"; Drive = "K:"; Path = "\\10.5.10.8\Marketing"},
+    @{ OUPath = "StudentServices"; Drive = "V:"; Path = "\\10.5.10.8\Student Services"},
+    @{ OUPath = "HOP_TeachingLearning"; Drive = "T:"; Path = "\\10.5.10.8\Teaching_Learning"}
 )
 
 $user = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
@@ -45,6 +45,7 @@ if (Test-Path $publicDrive) {
     New-PSDrive -Name $publicDrive.TrimEnd(":") -PSProvider FileSystem -Root $publicPath -Persist
 }
 
+# Assign drives according to OU
 foreach ($map in $DriveMappings) {
     if ($ouList -contains $map.OUpath) {
         # if drive already exists, remove it
@@ -58,4 +59,13 @@ foreach ($map in $DriveMappings) {
 }
 
 # display a message
-#todo
+Add-Type -AssemblyName PresentationFramework
+
+# Collect mapped network drives
+$mappedDrives = Get-PSDrive -PSProvider FileSystem |
+    Where-Object { $_.DisplayRoot -like "\\*" } |
+    ForEach-Object { "$($_.Name): → $($_.Root)" }
+$msg = "Mapped drives for $env:USERNAME:`n`n" + ($mappedDrives -join "`n")
+
+# Show message box
+[System.Windows.MessageBox]::Show($msg, "Welcome to KOI")
