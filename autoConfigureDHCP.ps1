@@ -38,7 +38,6 @@ if ($numberOfNetworks -ge 2) {
 if ($chosenNetworkIndex) {
 	$currentIP = (Get-NetIPConfiguration -InterfaceIndex $chosenNetworkIndex).IPv4Address.IPAddress
 	$currentDHCPStatusIPv4 = (Get-NetIPConfiguration -InterfaceIndex $chosenNetworkIndex).NetIPv4Interface.dhcp
-	
 } else {
 	$currentIP = (Get-NetIPConfiguration -InterfaceAlias Ethernet).IPv4Address.IPAddress
 	$currentDHCPStatusIPv4 = (Get-NetIPConfiguration -InterfaceAlias Ethernet).NetIPv4Interface.dhcp
