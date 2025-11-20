@@ -1,17 +1,24 @@
-# v1.1 Kevin Yu (23/09/25)
-# This script changes the network settings for the Ethernet connection:
-# Enables DHCP for IP address and automatically get the DNS addresses from the server
+# v1.2 Kevin Yu (20/11/25)
+# This script will configure the IP address and DNS address of the computer.
 
 # Gain administrator permissions
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) { 
-    Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit 
+    Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs -WindowStyle Maximized; exit 
 }
 
 # Set DNS address to static address OR NOT
-$enableStaticDNS = $false  # set this to $true if you want to enable static DNS
-$staticDNSIPv4 = "10.5.10.20", "10.5.10.25"  
+$enableStaticDNS = $true  # set this to $true if you want to enable static DNS
+$staticDNSIPv4 = "10.5.10.20", "8.8.8.8"
+$defaultGateway = "10.5.40.1"
 # **CHANGE ABOVE ADDRESSES IF USING STATIC ADDRESSES**
 
+# Set IP address header
+$newIPheader = "10.5.40."
+# This value will be added to the start of whatever value you enter for the IP address.
+# Useful when setting multiple IP address in succession, no need to keep typing the same 10.5.40.
+# Leave blank if you want to manually set everytime.
+
+Write-Host "Initialising..."
 # Current network configuration information
 # check if there is more than one ethernet connection
 $availableNetworks = Get-NetIPConfiguration -detailed | Where-Object {$_.InterfaceAlias -like '*ethernet*'}
@@ -37,9 +44,13 @@ if ($numberOfNetworks -ge 2) {
 
 if ($chosenNetworkIndex) {
 	$currentIP = (Get-NetIPConfiguration -InterfaceIndex $chosenNetworkIndex).IPv4Address.IPAddress
+	Get-NetIPAddress -InterfaceIndex $chosenNetworkIndex |  Remove-NetRoute -Confirm:$false
+	Get-NetIPAddress -InterfaceIndex $chosenNetworkIndex |  Remove-NetIPAddress -Confirm:$false
 	$currentDHCPStatusIPv4 = (Get-NetIPConfiguration -InterfaceIndex $chosenNetworkIndex).NetIPv4Interface.dhcp
 } else {
 	$currentIP = (Get-NetIPConfiguration -InterfaceAlias Ethernet).IPv4Address.IPAddress
+	Get-NetIPAddress -InterfaceAlias Ethernet |  Remove-NetRoute -Confirm:$false
+	Get-NetIPAddress -InterfaceAlias Ethernet |  Remove-NetIPAddress -Confirm:$false
 	$currentDHCPStatusIPv4 = (Get-NetIPConfiguration -InterfaceAlias Ethernet).NetIPv4Interface.dhcp
 }
 
@@ -51,7 +62,6 @@ Write-Host "=== Current configuration information ===`n`n"
 
 # Display new (to be set) network configuration
 Write-Host "=== New configuration information ==="
-Write-Host "IP Address DHCP: To be enabled"
 if ($enableStaticDNS) {
     Write-Host "With static DNS: '$staticDNSIPv4' to be enabled"
 } else {
@@ -63,7 +73,9 @@ Write-Host "=== New configuration information ===`n`n"
 Write-Host "===Applying new changes...===`n"
 if ($chosenNetworkIndex) {
 	Write-Host "Enabling DHCP for IPv4 and removing old address..."
-	Set-NetIPInterface -InterfaceIndex $chosenNetworkIndex -Dhcp enabled -AddressFamily IPv4 | Remove-NetIpAddress -InterfaceIndex $chosenNetworkIndex
+	Write-Host "Enter the new IP address: $newIPheader"
+	$newIP = Read-Host
+	New-NetIPAddress -IPAddress "$newIPheader$newIP" -PrefixLength 24 -InterfaceIndex $chosenNetworkIndex -DefaultGateway $defaultGateway
 	if ($enableStaticDNS) {
 		Write-Host "Setting DNS addresses to static: '$staticDNSIPv4'" -ForegroundColor Green
 		Set-DNSClientServerAddress -InterfaceIndex $chosenNetworkIndex -ServerAddresses ($staticDNSIPv4)
@@ -71,13 +83,11 @@ if ($chosenNetworkIndex) {
 		Write-Host "Setting DNS addresses to automatic (DHCP)..."
 		Set-DNSClientServerAddress -InterfaceIndex $chosenNetworkIndex -ResetServerAddresses
 	}
-	
-	Write-Host "Renewing address from DHCP..."
-	Start-Process -FilePath "ipconfig.exe" -ArgumentList "/renew `"$chosenNetworkAlias`"" -noNewWindow -Wait
-	# Above step is necessary to assure that a new ip address is fetched from the server, as otherwise it just replaces the previous one
 } else {
 	Write-Host "Enabling DHCP for IPv4 and removing old address..."
-	Set-NetIPInterface -InterfaceAlias Ethernet -Dhcp Enabled -AddressFamily IPv4 | Remove-NetIPAddress -InterfaceAlias Ethernet
+	Write-Host "Enter the new IP address: $newIPheader"
+	$newIP = Read-Host
+	New-NetIPAddress -IPAddress "$newIPheader$newIP" -PrefixLength 24 -InterfaceAlias Ethernet -DefaultGateway $defaultGateway
 	if ($enableStaticDNS) {
 		Write-Host "Setting DNS addresses to static: '$staticDNSIPv4'" -ForegroundColor Green
 		Set-DNSClientServerAddress -InterfaceAlias Ethernet -ServerAddresses ($staticDNSIPv4)
@@ -85,10 +95,6 @@ if ($chosenNetworkIndex) {
 		Write-Host "Setting DNS addresses to automatic (DHCP)..."
 		Set-DNSClientServerAddress -InterfaceAlias Ethernet -ResetServerAddresses
 	}
-	
-	Write-Host "Renewing address from DHCP..."
-	Start-Process -FilePath "ipconfig.exe" -ArgumentList "/renew Ethernet" -noNewWindow -Wait
-	# Above step is necessary to assure that a new ip address is fetched from the server, as otherwise it just replaces the previous one
 }
 
 Write-Host "`nPress Enter to Exit..."
